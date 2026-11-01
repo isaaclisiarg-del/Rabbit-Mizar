@@ -109,7 +109,7 @@ fun CaraApp(vm: AppViewModel, appearanceMode: AppearanceMode = AppearanceMode.SY
         "loan" -> "Préstamo #$loanId"
         "select" -> "Elegir cliente"
         "newLoan" -> "Nuevo préstamo"
-        else -> listOf("Mati Créditos", "Clientes", "Resumen", "Ajustes")[tab]
+        else -> listOf("Rabbit: Mizar", "Clientes", "Resumen", "Ajustes")[tab]
     }
     Scaffold(
         topBar = { TopAppBar(title = { Text(title) }, navigationIcon = {

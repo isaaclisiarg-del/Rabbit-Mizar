@@ -1,0 +1,2 @@
+La firma coincide con 1.0.0; versionCode 1 → 2; applicationId conservado.
+El esquema Room 1 coincide exactamente con el de 1.0.0.

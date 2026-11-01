@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.aura.caradeverga.LedgerTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-09-13T17:00:45" hostname="localhost" time="0.758">
+  <properties/>
+  <testcase name="monthlyCashUsesPaymentDatesAndExpectedUsesDueDates" classname="com.aura.caradeverga.LedgerTest" time="0.072"/>
+  <testcase name="completeBackupRoundTripAndSafeRejection" classname="com.aura.caradeverga.LedgerTest" time="0.085"/>
+  <testcase name="datesStayAnchoredAndOverdueIsStrict" classname="com.aura.caradeverga.LedgerTest" time="0.034"/>
+  <testcase name="simultaneousLoansAndPermanentRates" classname="com.aura.caradeverga.LedgerTest" time="0.046"/>
+  <testcase name="invalidAndConcurrentPaymentsCannotOverpay" classname="com.aura.caradeverga.LedgerTest" time="0.07"/>
+  <testcase name="invalidPreviousPaymentsNeverLeaveHalfRegisteredLoans" classname="com.aura.caradeverga.LedgerTest" time="0.067"/>
+  <testcase name="overduePartialAndPaidTransitions" classname="com.aura.caradeverga.LedgerTest" time="0.048"/>
+  <testcase name="exactPlansAndRemainder" classname="com.aura.caradeverga.LedgerTest" time="0.03"/>
+  <testcase name="persistenceSurvivesDatabaseCloseAndReopen" classname="com.aura.caradeverga.LedgerTest" time="0.066"/>
+  <testcase name="archiveKeepsDebtAndDeletionCascadesOnlySelectedLoan" classname="com.aura.caradeverga.LedgerTest" time="0.09"/>
+  <testcase name="startedLoansMayBeUnpaidOverdueOrCompletelyPaid" classname="com.aura.caradeverga.LedgerTest" time="0.033"/>
+  <testcase name="partialPaymentsHistoryDeletionAndClosure" classname="com.aura.caradeverga.LedgerTest" time="0.052"/>
+  <testcase name="startedLoanKeepsOriginalRateDatesCashAndHistoryAcrossReopenAndBackup" classname="com.aura.caradeverga.LedgerTest" time="0.065"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

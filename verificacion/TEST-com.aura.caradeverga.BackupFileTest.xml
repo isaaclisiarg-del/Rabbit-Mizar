@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.aura.caradeverga.BackupFileTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-09-13T17:00:15" hostname="localhost" time="29.421">
+  <properties/>
+  <testcase name="viewModelWritesAndReadsActualBackupFile" classname="com.aura.caradeverga.BackupFileTest" time="29.421"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

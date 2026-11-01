@@ -1,0 +1,30 @@
+# Build artifacts and local configuration
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+*.apk
+*.aab
+
+# Signing credentials: never upload, even to a private repository
+signing/
+*.jks
+*.keystore
+*.p12
+*.pfx
+keystore.properties
+*.pem
+*.key
+
+# User and customer data / financial backups
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.backup.json
+*prestamos*.json
+*clientes*.json
+*.json.bak
+.DS_Store

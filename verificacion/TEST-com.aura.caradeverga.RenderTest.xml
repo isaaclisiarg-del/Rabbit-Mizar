@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.aura.caradeverga.RenderTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-13T17:00:45" hostname="localhost" time="8.999">
+  <properties/>
+  <testcase name="startedLoanAppFlowKeepsOtherLoansAndDisplaysOnlyRemainingDebt" classname="com.aura.caradeverga.RenderTest" time="7.526"/>
+  <testcase name="compactPhone" classname="com.aura.caradeverga.RenderTest" time="0.212"/>
+  <testcase name="lightHome" classname="com.aura.caradeverga.RenderTest" time="0.209"/>
+  <testcase name="darkHome" classname="com.aura.caradeverga.RenderTest" time="0.199"/>
+  <testcase name="completeAppFlowCreatesClientTwoLoansAndPartialPayment" classname="com.aura.caradeverga.RenderTest" time="0.852"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+]]></system-err>
+</testsuite>

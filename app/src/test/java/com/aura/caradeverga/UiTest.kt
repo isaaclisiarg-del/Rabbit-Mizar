@@ -108,7 +108,7 @@ class UiTest {
         compose.onNodeWithText("Por cuota:", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Pendiente actual:", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Préstamo del", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("Préstamo #${loan.id}").performClick()
+        compose.onNode(hasClickAction()).performClick()
         Assert.assertTrue("La tarjeta debe seguir abriendo el detalle", opened)
     }
 

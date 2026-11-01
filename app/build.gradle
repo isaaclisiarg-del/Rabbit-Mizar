@@ -4,9 +4,30 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose'
     id 'org.jetbrains.kotlin.kapt'
 }
-def signingFile = rootProject.file('signing/keystore.properties')
+// La importación GitHub de Build Center usa worktrees aislados: la clave no puede
+// estar dentro del checkout. Guardarla fuera de Git, en el HOME privado de Termux.
+def localSigningDir = rootProject.file('signing')
+def permanentSigningDir = new File(
+    System.getenv('HOME') ?: System.getProperty('user.home'),
+    '.local/share/rabbit-mizar/signing'
+)
+def signingDir = new File(localSigningDir, 'keystore.properties').isFile() ? localSigningDir : permanentSigningDir
+def signingFile = new File(signingDir, 'keystore.properties')
+def signingKeyFile = new File(signingDir, 'caradeverga-release.jks')
 def signingProps = new Properties()
-if (signingFile.exists()) signingFile.withInputStream { signingProps.load(it) }
+if (signingFile.isFile()) signingFile.withInputStream { signingProps.load(it) }
+// Nunca generar una release sin firma: podría confundirse con una actualización válida.
+def releaseRequested = gradle.startParameter.taskNames.any { task ->
+    def name = task.toLowerCase(java.util.Locale.ROOT)
+    name.contains('assemblerelease') || name.contains('bundlerelease')
+}
+if (releaseRequested && (!signingFile.isFile() || !signingKeyFile.isFile() ||
+        !signingProps.getProperty('storePassword') || !signingProps.getProperty('keyPassword'))) {
+    throw new GradleException(
+        'Rabbit: Mizar release bloqueada: faltan los archivos originales de firma ' +
+        'en ~/.local/share/rabbit-mizar/signing/'
+    )
+}
 android {
     namespace 'com.aura.caradeverga'
     compileSdk 35
@@ -16,8 +37,8 @@ android {
         applicationId 'com.aura.caradeverga'
         minSdk 26
         targetSdk 35
-        versionCode 2
-        versionName '1.1.0'
+        versionCode 3
+        versionName '1.2.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     buildFeatures { compose true }
@@ -25,8 +46,8 @@ android {
     kotlinOptions { jvmTarget = '17' }
     testOptions { unitTests.includeAndroidResources = true }
     signingConfigs {
-        if (signingFile.exists()) release {
-            storeFile rootProject.file('signing/caradeverga-release.jks')
+        if (signingFile.isFile() && signingKeyFile.isFile()) release {
+            storeFile signingKeyFile
             storePassword signingProps.getProperty('storePassword')
             keyAlias 'caradeverga'
             keyPassword signingProps.getProperty('keyPassword')
@@ -35,7 +56,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            if (signingFile.exists()) signingConfig signingConfigs.release
+            if (signingFile.isFile() && signingKeyFile.isFile()) signingConfig signingConfigs.release
         }
     }
 }

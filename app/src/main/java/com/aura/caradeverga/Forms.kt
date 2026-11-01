@@ -71,6 +71,7 @@ fun NewLoanScreen(customer: Customer, plans: List<Plan>, today: LocalDate, busy:
     var frequency by rememberSaveable(customer.id) { mutableStateOf(Frequency.MONTHLY.name) }
     var started by rememberSaveable(customer.id) { mutableStateOf(false) }
     var agreedRate by rememberSaveable(customer.id) { mutableStateOf<String?>(null) }
+    var withoutInterest by rememberSaveable(customer.id) { mutableStateOf(false) }
     var previous by rememberSaveable(customer.id, stateSaver = PreviousPaymentsSaver) { mutableStateOf(emptyList<PreviousPayment>()) }
     var paymentNumber by rememberSaveable(customer.id) { mutableStateOf<Int?>(null) }
     var confirmNew by remember { mutableStateOf(false) }
@@ -78,7 +79,11 @@ fun NewLoanScreen(customer: Customer, plans: List<Plan>, today: LocalDate, busy:
     var error by remember { mutableStateOf<String?>(null) }
     val planRate = plans.firstOrNull { it.count == count }?.rateBps ?: count * 1500
     val rateText = agreedRate ?: Money.rate(planRate).removeSuffix(" %")
-    val rate = if (started) runCatching { Money.parseRate(rateText) }.getOrNull() else planRate
+    val rate = when {
+        withoutInterest -> 0
+        started -> runCatching { Money.parseRate(rateText) }.getOrNull()
+        else -> planRate
+    }
     val quote = runCatching { LoanMath.quote(Money.parse(principal), requireNotNull(rate), count) }.getOrNull()
     val date = LocalDate.parse(loanDate)
     val due = LocalDate.parse(firstDue)
@@ -104,7 +109,12 @@ fun NewLoanScreen(customer: Customer, plans: List<Plan>, today: LocalDate, busy:
                 else { count = n; error = null }
             }, label = { Text(n.toString()) }, modifier = Modifier.weight(1f)) }
         }
-        if (started) OutlinedTextField(rateText, { if (it.length <= 8) agreedRate = it }, Modifier.fillMaxWidth(),
+        Section("Intereses de este préstamo")
+        FilterChip(selected = withoutInterest, enabled = !busy, onClick = { withoutInterest = !withoutInterest; error = null },
+            label = { Text("Sin intereses (0%)") })
+        if (withoutInterest) Text("Solo se devolverá el capital. Los planes generales no se modifican.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else if (started) OutlinedTextField(rateText, { if (it.length <= 8) agreedRate = it }, Modifier.fillMaxWidth(),
             label = { Text("Interés total pactado") }, suffix = { Text("%") }, singleLine = true,
             supportingText = { Text("Usá el porcentaje original de este préstamo.") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = !busy)
@@ -172,7 +182,11 @@ fun NewLoanScreen(customer: Customer, plans: List<Plan>, today: LocalDate, busy:
         FormError(error)
         Button(enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), onClick = {
             runCatching {
-                val originalRate = if (started) Money.parseRate(rateText) else null
+                val originalRate = when {
+                    withoutInterest -> 0
+                    started -> Money.parseRate(rateText)
+                    else -> null
+                }
                 val input = LoanInput(Money.parse(principal), count, date, due, Frequency.valueOf(frequency),
                     originalRate, if (started) previous else emptyList())
                 input.validate(originalRate ?: planRate, today)
@@ -281,10 +295,18 @@ fun PaymentDialog(s: Ledger, i: Installment, today: LocalDate, busy: Boolean, on
 }
 
 @Composable
-fun SettingsScreen(s: Ledger, busy: Boolean, onPlans: (List<Plan>) -> Unit, onExport: () -> Unit, onImport: () -> Unit, onDemo: () -> Unit) {
+fun SettingsScreen(s: Ledger, busy: Boolean, onPlans: (List<Plan>) -> Unit, onExport: () -> Unit, onImport: () -> Unit, onDemo: () -> Unit,
+    appearanceMode: AppearanceMode = AppearanceMode.SYSTEM, onAppearanceChange: (AppearanceMode) -> Unit = {}) {
     var rates by remember(s.plans) { mutableStateOf(s.plans.sortedBy { it.count }.map { java.math.BigDecimal(it.rateBps).movePointLeft(2).stripTrailingZeros().toPlainString().replace('.', ',') }) }
     var error by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Section("Apariencia · Rabbit: Mizar", "Elegí cómo querés ver la app. No afecta los préstamos ni los datos.")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AppearanceMode.entries.forEach { mode ->
+                FilterChip(selected = appearanceMode == mode, enabled = !busy, onClick = { onAppearanceChange(mode) },
+                    label = { Text(mode.label) }, modifier = Modifier.weight(1f))
+            }
+        }
         Section("Planes de cuotas", "Los cambios se aplican solamente a préstamos nuevos.")
         rates.forEachIndexed { n, rate ->
             OutlinedTextField(rate, { value -> if (value.length <= 8) rates = rates.toMutableList().also { it[n] = value } }, Modifier.fillMaxWidth(), label = { Text("${n + 1} ${if (n == 0) "cuota" else "cuotas"}") }, suffix = { Text("%") },
@@ -303,7 +325,7 @@ fun SettingsScreen(s: Ledger, busy: Boolean, onPlans: (List<Plan>) -> Unit, onEx
             Section("Probar la app")
             OutlinedButton(enabled = !busy, onClick = onDemo, modifier = Modifier.fillMaxWidth()) { Text("Cargar datos de ejemplo") }
         }
-        Section("CaraDeVerga · 1.1.0")
+        Section("Rabbit: Mizar · 1.2.0")
         Text("Sin cuentas ni conexión a Internet. Los datos se guardan en este teléfono.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(16.dp))
     }

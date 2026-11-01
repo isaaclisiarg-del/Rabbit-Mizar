@@ -45,7 +45,7 @@ class RenderTest {
         runBlocking { vm.repository.initialize(); vm.repository.loadDemo(LocalDate.now()) }
         compose.setContent { CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) { CaraTheme { CaraApp(vm) } } }
         awaitState { vm.loaded.value }
-        compose.onNodeWithText("CaraDeVerga").assertExists()
+        compose.onNodeWithText("Mati Créditos").assertExists()
         compose.onNodeWithText("Hoy").assertExists()
         capture(filename)
     }

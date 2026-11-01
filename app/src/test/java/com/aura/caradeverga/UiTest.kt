@@ -74,6 +74,71 @@ class UiTest {
         Assert.assertEquals(3, saved.installmentCount)
     }
 
+    @Test fun zeroInterestChipCreatesAnIndividualInterestFreeLoan() {
+        val s = runBlocking { repo.snapshot() }
+        val customer = s.customers.first { it.name == "Isaac" }
+        var created = 0L
+        compose.setContent { CaraTheme { NewLoanScreen(customer, s.plans, today, false) { input ->
+            runBlocking { created = repo.newLoan(customer.id, input, today) }
+        } } }
+        compose.onNodeWithText("Capital prestado").performTextInput("10000")
+        compose.onNodeWithText("Sin intereses (0%)").performScrollTo().performClick()
+        compose.onNodeWithText("$ 10.000").performScrollTo().assertExists()
+        compose.onNodeWithText("Crear préstamo").performScrollTo().performClick()
+        val saved = runBlocking { repo.snapshot() }
+        Assert.assertTrue(created > 0)
+        Assert.assertEquals(0, saved.loanById.getValue(created).interestRateBps)
+        Assert.assertEquals(10_000L, saved.loanById.getValue(created).totalAmount)
+        Assert.assertEquals(s.plans, saved.plans)
+    }
+
+    @Test fun loanCardHighlightsOriginalCapitalNotAmountWithInterest() {
+        val s = runBlocking { repo.snapshot() }
+        val loan = s.loans.first { it.principal == 200_000L }
+        var opened = false
+        compose.setContent { CaraTheme { LoanCard(s, loan, today) { opened = true } } }
+        compose.onNodeWithText("Capital prestado").assertExists()
+        compose.onNodeWithText(Money.format(loan.principal)).assertExists()
+        compose.onNodeWithText("Ganancia pactada").assertExists()
+        compose.onNodeWithText("+${Money.format(loan.expectedProfit)}").assertExists()
+        compose.onNodeWithText("Interés: ${Money.rate(loan.interestRateBps)}").assertExists()
+        compose.onNodeWithText("${loan.installmentCount} ${if (loan.installmentCount == 1) "cuota" else "cuotas"}").assertExists()
+        // El desglose y los saldos están en el detalle, no en esta tarjeta.
+        compose.onNodeWithText("Total pactado:", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Por cuota:", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Pendiente actual:", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Préstamo del", substring = true).assertDoesNotExist()
+        compose.onNode(hasClickAction()).performClick()
+        Assert.assertTrue("La tarjeta debe seguir abriendo el detalle", opened)
+    }
+
+    @Test fun loanCardDisplaysInterestFreeContractsWithoutChangingFinancialData() {
+        val s = runBlocking { repo.snapshot() }
+        val original = s.loans.first()
+        val free = original.copy(
+            interestRateBps = 0,
+            expectedProfit = 0L,
+            totalAmount = original.principal
+        )
+        compose.setContent { CaraTheme { LoanCard(s, free, today) {} } }
+        compose.onNodeWithText(Money.format(free.principal)).assertExists()
+        compose.onNodeWithText("Ganancia pactada").assertExists()
+        compose.onNodeWithText("+${Money.format(0)}").assertExists()
+        compose.onNodeWithText("Interés: 0 %").assertExists()
+        Assert.assertEquals(original, s.loans.first())
+    }
+
+        @Test fun appearanceSelectorCanSwitchIndependentlyOfFinancialPlans() {
+        val s = runBlocking { repo.snapshot() }
+        var chosen = AppearanceMode.SYSTEM
+        compose.setContent { CaraTheme { SettingsScreen(s, false, {}, {}, {}, {},
+            appearanceMode = chosen, onAppearanceChange = { chosen = it }) } }
+        compose.onNodeWithText("Claro").performScrollTo().performClick()
+        Assert.assertEquals(AppearanceMode.LIGHT, chosen)
+        Assert.assertEquals(AppearanceMode.SYSTEM, AppearanceMode.fromStored("unrecognized"))
+        Assert.assertEquals(AppearanceMode.DARK, AppearanceMode.fromStored("DARK"))
+    }
+
     @Test fun settingsButtonsHaveActionsAndAllFourPlansSave() {
         val s = runBlocking { repo.snapshot() }
         var exported = false; var imported = false; var saved: List<Plan>? = null

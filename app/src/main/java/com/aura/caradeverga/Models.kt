@@ -115,6 +115,9 @@ data class Allocation(val payment: Payment, val principal: Long, val interest: L
 data class MonthlySummary(val lent: Long, val scheduled: Long, val expectedInterest: Long,
     val collected: Long, val recovered: Long, val interestCollected: Long, val pending: Long, val overdue: Long)
 
+data class CustomerLoanAmounts(val originalCapital: Long, val agreedInterest: Long,
+    val agreedTotal: Long, val pending: Long)
+
 data class Ledger(val customers: List<Customer> = emptyList(), val loans: List<Loan> = emptyList(),
     val installments: List<Installment> = emptyList(), val payments: List<Payment> = emptyList(),
     val plans: List<Plan> = (1..4).map { Plan(it, it * 1500) }) {
@@ -128,6 +131,17 @@ data class Ledger(val customers: List<Customer> = emptyList(), val loans: List<L
     fun remaining(i: Installment): Long = i.originalAmount - paid(i)
     fun balance(l: Loan): Long = installmentsByLoan[l.id].orEmpty().sumOf { remaining(it) }
     fun debt(c: Customer): Long = loansByCustomer[c.id].orEmpty().sumOf { balance(it) }
+    // Display only: original amounts for contracts that still have outstanding installments.
+    // This must never replace debt(), which is the actual receivable after payments.
+    fun activeLoanAmounts(c: Customer): CustomerLoanAmounts {
+        val activeLoans = loansByCustomer[c.id].orEmpty().filter { balance(it) > 0L }
+        return CustomerLoanAmounts(
+            originalCapital = activeLoans.sumOf { it.principal },
+            agreedInterest = activeLoans.sumOf { it.expectedProfit },
+            agreedTotal = activeLoans.sumOf { it.totalAmount },
+            pending = activeLoans.sumOf { balance(it) }
+        )
+    }
     fun active(c: Customer): Int = loansByCustomer[c.id].orEmpty().count { balance(it) > 0 }
     fun customerInstallments(c: Customer): List<Installment> = loansByCustomer[c.id].orEmpty().flatMap { installmentsByLoan[it.id].orEmpty() }
     fun next(c: Customer): Installment? = customerInstallments(c).filter { remaining(it) > 0 }.minWithOrNull(compareBy({ it.dueDate }, { it.id }))

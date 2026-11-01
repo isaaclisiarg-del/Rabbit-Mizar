@@ -29,23 +29,44 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         model = ViewModelProvider(this)[AppViewModel::class.java]
-        setContent { CaraTheme { CaraApp(model) } }
+        val appearancePrefs = getSharedPreferences("rabbit_mizar_appearance", MODE_PRIVATE)
+        setContent {
+            var appearance by remember { mutableStateOf(AppearanceMode.fromStored(appearancePrefs.getString("mode", null))) }
+            CaraTheme(appearance) {
+                CaraApp(model, appearanceMode = appearance, onAppearanceChange = { selected ->
+                    appearancePrefs.edit().putString("mode", selected.name).apply()
+                    appearance = selected
+                })
+            }
+        }
     }
     override fun onResume() { super.onResume(); if (::model.isInitialized) model.refreshDate() }
 }
 
+enum class AppearanceMode(val label: String) {
+    SYSTEM("Sistema"), LIGHT("Claro"), DARK("Oscuro");
+    companion object {
+        fun fromStored(value: String?): AppearanceMode = entries.firstOrNull { it.name == value } ?: SYSTEM
+    }
+}
+
 @Composable
-fun CaraTheme(content: @Composable () -> Unit) {
-    val colors = if (isSystemInDarkTheme()) darkColorScheme(
-        primary = Color(0xFFA1D5BD), onPrimary = Color(0xFF063829), primaryContainer = Color(0xFF244E3E),
-        onPrimaryContainer = Color(0xFFBCEED6), secondary = Color(0xFFB8CCBF),
-        background = Color(0xFF101512), surface = Color(0xFF101512), surfaceContainer = Color(0xFF1C211E),
-        surfaceVariant = Color(0xFF3E4942), onSurfaceVariant = Color(0xFFC0C9C1)
+fun CaraTheme(appearance: AppearanceMode = AppearanceMode.SYSTEM, content: @Composable () -> Unit) {
+    val dark = when (appearance) {
+        AppearanceMode.SYSTEM -> isSystemInDarkTheme()
+        AppearanceMode.LIGHT -> false
+        AppearanceMode.DARK -> true
+    }
+    val colors = if (dark) darkColorScheme(
+        primary = Color(0xFFF0B7D8), onPrimary = Color(0xFF42223B), primaryContainer = Color(0xFF633C59),
+        onPrimaryContainer = Color(0xFFFFD8EE), secondary = Color(0xFFE1BED1),
+        background = Color(0xFF151219), surface = Color(0xFF151219), surfaceContainer = Color(0xFF28222D),
+        surfaceVariant = Color(0xFF493E4A), onSurfaceVariant = Color(0xFFD2C5D0)
     ) else lightColorScheme(
-        primary = Color(0xFF28634B), onPrimary = Color.White, primaryContainer = Color(0xFFC5EBD5),
-        onPrimaryContainer = Color(0xFF073823), secondary = Color(0xFF526657),
-        background = Color(0xFFF7F9F5), surface = Color(0xFFF7F9F5), surfaceContainer = Color(0xFFEDF1EB),
-        surfaceVariant = Color(0xFFDCE5DA), onSurfaceVariant = Color(0xFF414A42)
+        primary = Color(0xFF81466A), onPrimary = Color.White, primaryContainer = Color(0xFFF7DCEB),
+        onPrimaryContainer = Color(0xFF421B35), secondary = Color(0xFF765268),
+        background = Color(0xFFFCF9FC), surface = Color(0xFFFCF9FC), surfaceContainer = Color(0xFFF3EEF3),
+        surfaceVariant = Color(0xFFEAE0E9), onSurfaceVariant = Color(0xFF594B56)
     )
     MaterialTheme(colorScheme = colors, content = content)
 }
@@ -54,7 +75,8 @@ data class Confirmation(val title: String, val text: String, val action: () -> U
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CaraApp(vm: AppViewModel) {
+fun CaraApp(vm: AppViewModel, appearanceMode: AppearanceMode = AppearanceMode.SYSTEM,
+    onAppearanceChange: (AppearanceMode) -> Unit = {}) {
     val s by vm.ledger.collectAsStateWithLifecycle()
     val today by vm.today.collectAsStateWithLifecycle()
     val busy by vm.busy.collectAsStateWithLifecycle()
@@ -87,7 +109,7 @@ fun CaraApp(vm: AppViewModel) {
         "loan" -> "Préstamo #$loanId"
         "select" -> "Elegir cliente"
         "newLoan" -> "Nuevo préstamo"
-        else -> listOf("CaraDeVerga", "Clientes", "Resumen", "Ajustes")[tab]
+        else -> listOf("Mati Créditos", "Clientes", "Resumen", "Ajustes")[tab]
     }
     Scaffold(
         topBar = { TopAppBar(title = { Text(title) }, navigationIcon = {
@@ -143,7 +165,9 @@ fun CaraApp(vm: AppViewModel) {
                         onImport = { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
                         onDemo = { confirmation = Confirmation("¿Cargar ejemplos?", "Se crearán clientes ficticios y cuotas de prueba. Para trabajar con datos reales, podés borrar los préstamos de ejemplo y luego sus clientes.") {
                             vm.action("Ejemplos cargados.", after = { tab = 0 }) { vm.repository.loadDemo(today) }
-                        } })
+                        } },
+                        appearanceMode = appearanceMode,
+                        onAppearanceChange = onAppearanceChange)
                 }
             }
         }

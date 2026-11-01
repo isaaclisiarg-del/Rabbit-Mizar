@@ -74,6 +74,44 @@ class UiTest {
         Assert.assertEquals(3, saved.installmentCount)
     }
 
+    @Test fun zeroInterestChipCreatesAnIndividualInterestFreeLoan() {
+        val s = runBlocking { repo.snapshot() }
+        val customer = s.customers.first { it.name == "Isaac" }
+        var created = 0L
+        compose.setContent { CaraTheme { NewLoanScreen(customer, s.plans, today, false) { input ->
+            runBlocking { created = repo.newLoan(customer.id, input, today) }
+        } } }
+        compose.onNodeWithText("Capital prestado").performTextInput("10000")
+        compose.onNodeWithText("Sin intereses (0%)").performScrollTo().performClick()
+        compose.onNodeWithText("$ 10.000").performScrollTo().assertExists()
+        compose.onNodeWithText("Crear préstamo").performScrollTo().performClick()
+        val saved = runBlocking { repo.snapshot() }
+        Assert.assertTrue(created > 0)
+        Assert.assertEquals(0, saved.loanById.getValue(created).interestRateBps)
+        Assert.assertEquals(10_000L, saved.loanById.getValue(created).totalAmount)
+        Assert.assertEquals(s.plans, saved.plans)
+    }
+
+    @Test fun loanCardHighlightsOriginalCapitalNotAmountWithInterest() {
+        val s = runBlocking { repo.snapshot() }
+        val loan = s.loans.first { it.principal == 200_000L }
+        compose.setContent { CaraTheme { LoanCard(s, loan, today) {} } }
+        compose.onNodeWithText("Capital prestado").assertExists()
+        compose.onNodeWithText("$ 200.000").assertExists()
+        compose.onNodeWithText("Total pactado: $ 260.000").assertExists()
+    }
+
+    @Test fun appearanceSelectorCanSwitchIndependentlyOfFinancialPlans() {
+        val s = runBlocking { repo.snapshot() }
+        var chosen = AppearanceMode.SYSTEM
+        compose.setContent { CaraTheme { SettingsScreen(s, false, {}, {}, {}, {},
+            appearanceMode = chosen, onAppearanceChange = { chosen = it }) } }
+        compose.onNodeWithText("Claro").performScrollTo().performClick()
+        Assert.assertEquals(AppearanceMode.LIGHT, chosen)
+        Assert.assertEquals(AppearanceMode.SYSTEM, AppearanceMode.fromStored("unrecognized"))
+        Assert.assertEquals(AppearanceMode.DARK, AppearanceMode.fromStored("DARK"))
+    }
+
     @Test fun settingsButtonsHaveActionsAndAllFourPlansSave() {
         val s = runBlocking { repo.snapshot() }
         var exported = false; var imported = false; var saved: List<Plan>? = null

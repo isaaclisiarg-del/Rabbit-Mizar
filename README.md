@@ -72,3 +72,10 @@ Las pruebas de Room se ejecutan sobre Android simulado con Robolectric y SQLite 
 IMPORTACIÓN SEGURA AL REPOSITORIO: la carpeta local `signing/` con la clave privada original y sus contraseñas está excluida deliberadamente de este paquete para GitHub. La copia completa original se conserva por separado; para compilar una actualización release firmada hay que reponer esa carpeta SOLO en el entorno local y nunca subirla al repositorio. Las actualizaciones requieren la misma firma, mismo `applicationId`, `versionCode` creciente y una migración de base de datos segura cuando cambie el esquema. Conservá una exportación JSON de los datos reales antes de instalar nuevas versiones.
 
 Referencias técnicas: [Room y sus pruebas](https://developer.android.com/training/data-storage/room/testing-db), [compatibilidad de Kotlin y herramientas Android](https://developer.android.com/build/kotlin-support).
+
+
+## Desarrollo 1.2.0 (rama separada)
+
+La mejora de fichas de capital, modo claro/oscuro manual y préstamos al 0% está en `feature/mizar-1.2.0-capital-claro-interes-cero`, **no liberada**. No sustituir la versión que usa Mati sin probar una instalación sobre 1.1.0 firmada con la clave original y sin respaldar previamente sus datos.
+
+[Bitácora y checklist de la iteración](docs/bitacoras/2026-11-01-mizar-1.2.0-capital-tema-interes-cero.md).

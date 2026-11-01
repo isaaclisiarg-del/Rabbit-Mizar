@@ -152,7 +152,12 @@ fun CustomersScreen(s: Ledger, today: LocalDate, onCustomer: (Customer) -> Unit,
         items(list, key = { it.id }) { c -> Card(onClick = { onCustomer(c) }, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(c.displayName, style = MaterialTheme.typography.titleMedium)
-                Text(Money.format(s.debt(c)), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                val amounts = s.activeLoanAmounts(c)
+                Text("Capital prestado · préstamos activos", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(Money.format(amounts.originalCapital), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                Text("+ Intereses pactados: ${Money.format(amounts.agreedInterest)}", style = MaterialTheme.typography.bodySmall)
+                Text("Total pactado: ${Money.format(amounts.agreedTotal)}", style = MaterialTheme.typography.bodySmall)
+                Text("Pendiente actual: ${Money.format(amounts.pending)}", style = MaterialTheme.typography.bodySmall)
                 Text("${s.active(c)} préstamos activos", style = MaterialTheme.typography.bodySmall)
                 s.next(c)?.let { Text("Próxima cuota: ${displayDate(it.dueDate)} · ${Money.format(s.remaining(it))}", style = MaterialTheme.typography.bodySmall) }
                 if (s.overdue(c, today) > 0L) Badge("Vencido: ${Money.format(s.overdue(c, today))}", true)
@@ -190,7 +195,14 @@ fun CustomerScreen(s: Ledger, c: Customer, today: LocalDate, busy: Boolean, onLo
             Text(c.displayName, style = MaterialTheme.typography.headlineMedium)
             if (c.archived) Badge("Archivado")
         }
-        item { Metric("Deuda total actual", s.debt(c), Modifier.fillMaxWidth()) }
+        item { Metric("Capital prestado · préstamos activos", s.activeLoanAmounts(c).originalCapital, Modifier.fillMaxWidth()) }
+        item { Card { Column(Modifier.padding(14.dp)) {
+            val amounts = s.activeLoanAmounts(c)
+            AmountRow("+ Intereses pactados", amounts.agreedInterest)
+            AmountRow("Total pactado", amounts.agreedTotal)
+            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+            AmountRow("Deuda pendiente actual", amounts.pending, true)
+        } } }
         item { Text("${active.size} préstamos activos", style = MaterialTheme.typography.titleSmall) }
         if (s.overdue(c, today) > 0) item { Badge("Monto vencido: ${Money.format(s.overdue(c, today))}", true) }
         s.next(c)?.let { i -> item { Text("Próxima cuota: ${displayDate(i.dueDate)} · ${Money.format(s.remaining(i))}", style = MaterialTheme.typography.bodyMedium) } }
@@ -222,9 +234,14 @@ fun LoanCard(s: Ledger, l: Loan, today: LocalDate, onClick: () -> Unit) {
                 Text("Préstamo #${l.id}", style = MaterialTheme.typography.titleMedium)
                 Badge(if (paid) "Pagado" else "Activo")
             }
-            Text("${Money.format(l.principal)} · ${l.installmentCount} cuotas · ${Money.rate(l.interestRateBps)}", style = MaterialTheme.typography.bodyMedium)
-            Text("${displayDate(l.loanDate)} · ${Frequency.valueOf(l.frequency).label}", style = MaterialTheme.typography.bodySmall)
-            if (!paid) Text("Debe ${Money.format(s.balance(l))}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text("Capital prestado", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(Money.format(l.principal), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+            Text("+ Intereses (${Money.rate(l.interestRateBps)}): ${Money.format(l.expectedProfit)}", style = MaterialTheme.typography.bodySmall)
+            Text("Total pactado: ${Money.format(l.totalAmount)}", style = MaterialTheme.typography.bodySmall)
+            Text("${l.installmentCount} cuotas · ${Frequency.valueOf(l.frequency).label}", style = MaterialTheme.typography.bodySmall)
+            Text("Por cuota: ${s.installmentsByLoan[l.id].orEmpty().sortedBy { it.number }.joinToString(" · ") { "${Money.format(it.originalAmount)} (${displayDate(it.dueDate)})" }}", style = MaterialTheme.typography.bodySmall)
+            Text("Préstamo del ${displayDate(l.loanDate)}", style = MaterialTheme.typography.bodySmall)
+            Text(if (paid) "Préstamo pagado" else "Pendiente actual: ${Money.format(s.balance(l))}", style = MaterialTheme.typography.bodyMedium)
             if (overdue) Badge("Tiene cuotas vencidas", true)
         }
     }
@@ -238,14 +255,15 @@ fun LoanScreen(s: Ledger, l: Loan, today: LocalDate, busy: Boolean, onInstallmen
             Text(s.customerById.getValue(l.customerId).displayName, style = MaterialTheme.typography.headlineSmall)
             Badge(if (s.balance(l) == 0L) "Pagado" else "Activo")
         }
-        item { Metric("Pendiente de este préstamo", s.balance(l), Modifier.fillMaxWidth()) }
+        item { Metric("Capital prestado · original", l.principal, Modifier.fillMaxWidth()) }
         item { Card { Column(Modifier.padding(16.dp)) {
-            AmountRow("Capital prestado", l.principal)
-            Text("Interés: ${Money.rate(l.interestRateBps)}", style = MaterialTheme.typography.bodyMedium)
-            AmountRow("Total a cobrar", l.totalAmount, true)
-            AmountRow("Ganancia prevista", l.expectedProfit)
+            Text("Interés pactado: ${Money.rate(l.interestRateBps)}", style = MaterialTheme.typography.bodyMedium)
+            AmountRow("+ Intereses", l.expectedProfit)
+            AmountRow("Total pactado", l.totalAmount)
+            HorizontalDivider(Modifier.padding(vertical = 6.dp))
             AmountRow("Cobrado", l.totalAmount - s.balance(l))
-            Text("${displayDate(l.loanDate)} · ${Frequency.valueOf(l.frequency).label}", style = MaterialTheme.typography.bodySmall)
+            AmountRow("Pendiente actual", s.balance(l), true)
+            Text("${displayDate(l.loanDate)} · ${l.installmentCount} cuotas · ${Frequency.valueOf(l.frequency).label}", style = MaterialTheme.typography.bodySmall)
         } } }
         item { Section("Cuotas", "Tocá una cuota para cobrar o consultar sus pagos.") }
         items(installments, key = { it.id }) { i -> InstallmentCard(s, i, today, false) { onInstallment(i) } }

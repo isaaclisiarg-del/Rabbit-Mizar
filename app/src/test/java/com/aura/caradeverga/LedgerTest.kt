@@ -71,6 +71,51 @@ class LedgerTest {
         assertEquals(3500, s.loanById.getValue(third).interestRateBps)
     }
 
+    @Test fun zeroInterestIsPerLoanAndNeverChangesGlobalPlans() = runBlocking {
+        val customerId = isaac()
+        val ordinaryId = loan(customerId, 200_000, 2)
+        val beforePlans = repo.snapshot().plans
+        val noInterestId = repo.newLoan(customerId,
+            LoanInput(10_000, 2, today.minusDays(1), today, Frequency.MONTHLY, agreedRateBps = 0), today)
+        var s = repo.snapshot()
+        val free = s.loanById.getValue(noInterestId)
+        val ordinary = s.loanById.getValue(ordinaryId)
+        assertEquals(0, free.interestRateBps)
+        assertEquals(10_000L, free.principal)
+        assertEquals(10_000L, free.totalAmount)
+        assertEquals(0L, free.expectedProfit)
+        assertEquals(listOf(5_000L, 5_000L), s.installmentsByLoan.getValue(free.id).sortedBy { it.number }.map { it.originalAmount })
+        assertEquals(beforePlans, s.plans)
+        assertEquals(260_000L, ordinary.totalAmount)
+        assertEquals(3000, ordinary.interestRateBps)
+        val amounts = s.activeLoanAmounts(s.customerById.getValue(customerId))
+        assertEquals(210_000L, amounts.originalCapital)
+        assertEquals(60_000L, amounts.agreedInterest)
+        assertEquals(270_000L, amounts.agreedTotal)
+        assertEquals(270_000L, amounts.pending)
+        val firstFree = s.installmentsByLoan.getValue(free.id).first { it.number == 1 }
+        repo.registerPayment(firstFree.id, 2_000L, today, today)
+        s = repo.snapshot()
+        assertEquals(8_000L, s.balance(free))
+        assertEquals(268_000L, s.debt(s.customerById.getValue(customerId)))
+        assertEquals(210_000L, s.activeLoanAmounts(s.customerById.getValue(customerId)).originalCapital)
+        assertEquals(0L, s.allocations.filter { it.payment.installmentId == firstFree.id }.sumOf { it.interest })
+        assertEquals(s, Backup.decode(Backup.encode(s), today))
+    }
+
+    @Test fun zeroInterestOnHistoricalLoanSupportsPreviousPayments() = runBlocking {
+        val customerId = isaac()
+        val input = LoanInput(10_000, 2, today.minusMonths(2), today.minusMonths(1),
+            Frequency.MONTHLY, agreedRateBps = 0,
+            previousPayments = listOf(PreviousPayment(1, 5_000, today.minusDays(10))))
+        val id = repo.newLoan(customerId, input, today)
+        val s = repo.snapshot()
+        assertEquals(0L, s.loanById.getValue(id).expectedProfit)
+        assertEquals(5_000L, s.balance(s.loanById.getValue(id)))
+        assertEquals(5_000L, s.allocations.sumOf { it.principal })
+        assertEquals(0L, s.allocations.sumOf { it.interest })
+    }
+
     @Test fun partialPaymentsHistoryDeletionAndClosure() = runBlocking {
         val l = loan(isaac())
         var s = repo.snapshot(); val i = s.installmentsByLoan.getValue(l).first()

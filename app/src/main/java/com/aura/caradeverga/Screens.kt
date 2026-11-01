@@ -226,23 +226,60 @@ fun CustomerScreen(s: Ledger, c: Customer, today: LocalDate, busy: Boolean, onLo
 
 @Composable
 fun LoanCard(s: Ledger, l: Loan, today: LocalDate, onClick: () -> Unit) {
-    val paid = s.balance(l) == 0L
-    val overdue = s.installmentsByLoan[l.id].orEmpty().any { s.overdue(it, today) }
+    // Vista resumen solamente. Fechas, saldos y detalles de cuotas permanecen en LoanScreen.
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text("Préstamo #${l.id}", style = MaterialTheme.typography.titleMedium)
-                Badge(if (paid) "Pagado" else "Activo")
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "Abrir detalle del préstamo",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-            Text("Capital prestado", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(Money.format(l.principal), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-            Text("+ Intereses (${Money.rate(l.interestRateBps)}): ${Money.format(l.expectedProfit)}", style = MaterialTheme.typography.bodySmall)
-            Text("Total pactado: ${Money.format(l.totalAmount)}", style = MaterialTheme.typography.bodySmall)
-            Text("${l.installmentCount} cuotas · ${Frequency.valueOf(l.frequency).label}", style = MaterialTheme.typography.bodySmall)
-            Text("Por cuota: ${s.installmentsByLoan[l.id].orEmpty().sortedBy { it.number }.joinToString(" · ") { "${Money.format(it.originalAmount)} (${displayDate(it.dueDate)})" }}", style = MaterialTheme.typography.bodySmall)
-            Text("Préstamo del ${displayDate(l.loanDate)}", style = MaterialTheme.typography.bodySmall)
-            Text(if (paid) "Préstamo pagado" else "Pendiente actual: ${Money.format(s.balance(l))}", style = MaterialTheme.typography.bodyMedium)
-            if (overdue) Badge("Tiene cuotas vencidas", true)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    "Capital prestado",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    Money.format(l.principal),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            HorizontalDivider()
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Ganancia pactada", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "+${Money.format(l.expectedProfit)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Interés: ${Money.rate(l.interestRateBps)}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    "${l.installmentCount} ${if (l.installmentCount == 1) "cuota" else "cuotas"}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
     }
 }
